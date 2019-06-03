@@ -140,7 +140,7 @@ options = SimpleNamespace(
 
     ##
     # Filter disambiguation pages
-    filter_disambig_pages = False,
+    filter_disambig_pages = True,
 
     ##
     # Drop tables from the article
@@ -152,7 +152,7 @@ options = SimpleNamespace(
 
     ##
     # Whether to preserve section titles
-    keepSections = True,
+    keepSections = False,
 
     ##
     # Whether to preserve lists
@@ -542,7 +542,7 @@ class Extractor(object):
     """
     An extraction task on a article.
     """
-    def __init__(self, id, revid, title, lines):
+    def __init__(self, id, revid, title, lines,pageNum,catSet):
         """
         :param id: id of page.
         :param title: tutle of page.
@@ -552,6 +552,7 @@ class Extractor(object):
         self.revid = revid
         self.title = title
         self.text = ''.join(lines)
+        self.catSet = catSet
         self.magicWords = MagicWords()
         self.frame = Frame()
         self.recursion_exceeded_1_errs = 0  # template recursion within expand()
@@ -583,9 +584,9 @@ class Extractor(object):
             out.write('\n')
         else:
             if options.print_revision:
-                header = '<doc id="%s" revid="%s" url="%s" title="%s">\n' % (self.id, self.revid, url, self.title)
+                header = '<doc id="%s" revid="%s" url="%s" title="%s" categories="[%s]">\n' % (self.id, self.revid, url, self.title,', '.join(self.catSet))
             else:
-                header = '<doc id="%s" url="%s" title="%s">\n' % (self.id, url, self.title)
+                header = '<doc id="%s" url="%s" title="%s" categories="[%s]">\n' % (self.id, url, self.title,', '.join(self.catSet))
             footer = "\n</doc>\n"
             if out == sys.stdout:   # option -a or -o -
                 header = header.encode('utf-8')
@@ -648,10 +649,12 @@ class Extractor(object):
         #
         text = self.transform(text)
         text = self.wiki2text(text)
-        text = text2BIOES_format(text)
-        text = compact(self.clean(text))
+        text = self.clean(text)
+        #text = text2BIOES_format(text)
+        text = compact(text)
+        text = [text2BIOES_format(t) for t in text]
         # from zwChan
-        text = [title_str] + text
+        #text = [title_str] + text
 
         if sum(len(line) for line in text) < options.min_text_length:
             return
@@ -755,6 +758,10 @@ class Extractor(object):
         Removes irrelevant parts from :param: text.
         """
 
+        if not options.keepSections:
+            # remove sections titles
+            text = re.sub('==+\s?[\w\s\?u0590-\u05fe\-\!\?\n\.\,]*\s?==+',"",text)
+
         # Collect spans
         spans = []
         # Drop HTML comments
@@ -783,6 +790,7 @@ class Extractor(object):
         if not options.toHTML:
             # Turn into text what is left (&amp;nbsp;) and <syntaxhighlight>
             text = unescape(text)
+
 
         # Expand placeholders
         for pattern, placeholder in placeholder_tag_patterns:
@@ -1310,7 +1318,7 @@ def findBalanced(text, openDelim=[open_delium], closeDelim=[']]']):
     cur = 0
     # end = len(text)
     startSet = False
-    startPat = re.compile("[\w\u0590-\u05fe]*"+openPat) #match hebrew prefix
+    startPat = re.compile(u"[\w\u0590-\u05fe\-\u0022\u201c\u201d\"&quot;']*"+openPat) #match hebrew prefix
     nextPat = startPat
     while True:
         next = nextPat.search(text, cur)
@@ -2120,25 +2128,24 @@ def replaceInternalLinks(text):
     cur = 0
     res = ''
     for s, e in findBalanced(text):
-
-        t = tailRE.match(text, e)
-        h = headRE.match(text, s)
-        if h: #match hebrew link prefix
+        t = tailRE.match(text, e) #match hebrew link postfix
+        h = headRE.match(text, s) #match hebrew link prefix
+        if h:
             pe = h.start(2)
             #test2 = text[pe, e]
             prefix = h.group(1)
-            print(prefix)
+            #print(prefix)
         else:
             prefix = ''
             pe = s
-        if t: #match hebrew link postfix
+        if t:
             trail = t.group(0)
             end = t.end()
         else:
             trail = ''
             end = e
 
-        test1 = text[s:e]
+        #test1 = text[s:e]
         inner = text[pe + 2:e - 2]
         # find first |
         pipe = inner.find('|')
@@ -2515,10 +2522,10 @@ def replaceExternalLinks(text):
 
 def makeExternalLink(url, anchor):
     """Function applied to wikiLinks"""
-    if options.keepLinks:
+    if options.keepExsLinks:
         return '<a href="%s">%s</a>' % (quote(url.encode('utf-8')), anchor)
     else:
-        return anchor
+        return ''#anchor
 
 
 def makeExternalImage(url, alt=''):
@@ -2531,8 +2538,8 @@ def makeExternalImage(url, alt=''):
 # ----------------------------------------------------------------------
 
 # match tail after wikilink
-tailRE = re.compile('[\w\u0590-\u05fe]+')
-headRE = re.compile('([\w\u0590-\u05fe]+)(\[\[)')
+tailRE = re.compile("[\w\u0590-\u05fe\-\u0022\u201c\u201d']+")
+headRE = re.compile("([\w\u0590-\u05fe\-\u0022\u201c\u201d\"&quot;']+)(\[\[)")
 
 syntaxhighlight = re.compile('&lt;syntaxhighlight .*?&gt;(.*?)&lt;/syntaxhighlight&gt;', re.DOTALL)
 
@@ -2656,7 +2663,7 @@ def compact(text):
         elif line[0] in '{|' or line[-1] == '}':
             continue
         # Drop irrelevant lines
-        elif (line[0] == '(' and line[-1] == ')') or line.strip('.-') == '':
+        elif (line[0] == '(' and line[-1] == ')') or (line.strip('.-') == '' and '-' in line):
             continue
         elif len(headers):
             if options.keepSections:
@@ -2757,7 +2764,7 @@ class OutputSplitter(object):
 tagRE = re.compile(r'(.*?)<(/?\w+)[^>]*?>(?:([^<]*)(<.*?>)?)?')
 #                    1     2               3      4
 keyRE = re.compile(r'key="(\d*)"')
-catRE = re.compile(r'\[\[Category:([^\|]+).*\]\].*')  # capture the category name [[Category:Category name|Sortkey]]"
+catRE = re.compile(r'\[\[קטגוריה:([^\|]+).*\]\].*')  # capture the category name [[Category:Category name|Sortkey]]"
 
 def load_templates(file, output_file=None):
     """
@@ -2825,7 +2832,7 @@ def pages_from(input):
             if inText:
                 page.append(line)
                 # extract categories
-                if line.lstrip().startswith('[[Category:'):
+                if line.lstrip().startswith('[[קטגוריה:'):
                     mCat = catRE.search(line)
                     if mCat:
                         catSet.add(mCat.group(1))
@@ -2996,7 +3003,7 @@ def process_dump(input_file, template_file, out_file, file_size, file_compress,
                     delay += 10
             if delay:
                 logging.info('Delay %ds', delay)
-            job = (id, revid, title, page, page_num)
+            job = (id, revid, title, page, page_num,catSet)
             jobs_queue.put(job) # goes to any available extract_process
             page_num += 1
         page = None             # free memory
@@ -3041,17 +3048,17 @@ def extract_process(opts, i, jobs_queue, output_queue):
     out = StringIO()                 # memory buffer
 
     #todo remove
-    num_of_pages=-1
+    #num_of_pages=-1
     while True:
-        if(options.num_of_pages>0):
-            num_of_pages = num_of_pages+1
-            if num_of_pages > options.num_of_pages:
-                break
-        job = jobs_queue.get()  # job is (id, title, page, page_num)
+     #   if(options.num_of_pages>0):
+      #      num_of_pages = num_of_pages+1
+       #     if num_of_pages > options.num_of_pages:
+        #        break
+        job = jobs_queue.get()  # job is (id, title, page, page_num,catSet)
         if job:
-            id, revid, title, page, page_num = job
+            id, revid, title, page, page_num,catSet = job
             try:
-                e = Extractor(*job[:4]) # (id, revid, title, page)
+                e = Extractor(*job[:6]) # (id, revid, title, page,pageNum,catSet)
                 page = None              # free memory
                 e.extract(out)
                 text = out.getvalue()
@@ -3198,10 +3205,13 @@ def main():
     groupP.add_argument("--filter_category",
                         help="specify the file that listing the Categories you want to include or exclude. One line for"
                              " one category. starting with: 1) '#' comment, ignored; 2) '^' exclude; Note: excluding has higher priority than including")
-    groupS.add_argument("--num_of_pages",default=-1,
+    groupS.add_argument("--exslinks",default=False,
+                        help="keep exsternal links")
+    groupS.add_argument("--num_of_pages", default=-1,
                         help="number of pages to read")
     args = parser.parse_args()
 
+    options.keepExsLinks = args.exslinks
     options.keepLinks = args.links
     options.keepSections = args.sections
     options.keepLists = args.lists

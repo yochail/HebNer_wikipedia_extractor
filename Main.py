@@ -1,9 +1,8 @@
-import polyglot.downloader
-print(downloader.supported_languages_table("ner2", 3))
+import wikimapper as wikimapper
 
+#wikimapper.download_wikidumps('hewiki-latest','./Data',overwrite=False)
+wikimapper.create_index('hewiki-latest','./Data','./Output/Mapping')
 
-
-
-
-WikiExtractor.py -o Output -l --debug --sections --min_text_length 200  --no-templates
-Data/hewiki-latest-pages-articles.xml.bz2
+mapper = wikimapper.WikiMapper("Output/Mapping")
+wikidata_id = mapper.title_to_id("מתמטיקה"
+print(wikidata_id) # Q28865

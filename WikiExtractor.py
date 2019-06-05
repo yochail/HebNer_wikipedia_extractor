@@ -1318,7 +1318,7 @@ def findBalanced(text, openDelim=[open_delium], closeDelim=[']]']):
     cur = 0
     # end = len(text)
     startSet = False
-    startPat = re.compile(u"[\w\u0590-\u05fe\-\u0022\u201c\u201d\"&quot;']*"+openPat) #match hebrew prefix
+    startPat = re.compile(u"[\(\)\w\u0590-\u05fe\-\u0022\u201c\u201d\"&quot;']*"+openPat) #match hebrew prefix
     nextPat = startPat
     while True:
         next = nextPat.search(text, cur)
@@ -2444,6 +2444,7 @@ def makeInternalLink(prefix,title, label,trail):
     if options.keepLinks:
         label = prefix + label + trail
         title = "<{}>".format(title.replace(" ", "_"))
+        title = re.sub(r'#.*>','>',title)
         label = title + label.replace(" ", " " +title)
         return label
     else:
@@ -2539,7 +2540,7 @@ def makeExternalImage(url, alt=''):
 
 # match tail after wikilink
 tailRE = re.compile("[\w\u0590-\u05fe\-\u0022\u201c\u201d']+")
-headRE = re.compile("([\w\u0590-\u05fe\-\u0022\u201c\u201d\"&quot;']+)(\[\[)")
+headRE = re.compile("([\(\)\w\u0590-\u05fe\-\u0022\u201c\u201d\"&quot;']+)(\[\[)")
 
 syntaxhighlight = re.compile('&lt;syntaxhighlight .*?&gt;(.*?)&lt;/syntaxhighlight&gt;', re.DOTALL)
 

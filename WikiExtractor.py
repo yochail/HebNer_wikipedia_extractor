@@ -2442,10 +2442,11 @@ def makeInternalLink(prefix,title, label,trail):
         if colon2 > 1 and title[colon + 1:colon2] not in options.acceptedNamespaces:
             return ''
     if options.keepLinks:
+        #insert line labels
         label = prefix + label + trail
         title = "<{}>".format(title.replace(" ", "_"))
         title = re.sub(r'#.*>','>',title)
-        label = title + label.replace(" ", " " +title)
+        label = title + label.replace(" ", " " +title).replace("-", title +"- " + title)
         return label
     else:
         return label

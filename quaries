@@ -7,6 +7,21 @@ SELECT ?item ?itemLabel ?isLoc ?isOrg ?isPer (GROUP_CONCAT(DISTINCT ?itemSyno; S
   ?item (wdt:P31/(wdt:P279*)) ?class;
   OPTIONAL{?item skos:altLabel ?itemSyno}
   FILTER(LANG(?itemSyno) = "he").
+  FILTER(LANG(?itemSyno) = "he").
   SERVICE wikibase:label { bd:serviceParam wikibase:language "he". }
 }
 GROUP BY ?item ?itemLabel ?isLoc ?isOrg ?isPer
+
+
+
+
+
+ORGANIZATION	Georgia-Pacific Corp., WHO
+PERSON	Eddy Bonte, President Obama
+LOCATION	Murray River, Mount Everest
+DATE	June, 2008-06-29
+TIME	two fifty a m, 1:30 p.m.
+MONEY	175 million Canadian Dollars, GBP 10.40
+PERCENT	twenty pct, 18.75 %
+FACILITY	Washington Monument, Stonehenge
+GPE	South East Asia, Midlothian #geo-political

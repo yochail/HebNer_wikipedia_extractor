@@ -732,6 +732,9 @@ class Extractor(object):
         # residuals of unbalanced quotes
         text = text.replace("'''", '').replace("''", '"')
 
+        # residuals of unbalanced quotes
+        text = text.replace("-", " - ")
+
         # replace internal links
         text = replaceInternalLinks(text)
 
@@ -2446,7 +2449,7 @@ def makeInternalLink(prefix,title, label,trail):
         label = prefix + label + trail
         title = "<{}>".format(title.replace(" ", "_"))
         title = re.sub(r'#.*>','>',title)
-        label = title + label.replace(" ", " " +title).replace("-", title +"- " + title)
+        label = label.replace(" ",title + " ") + title
         return label
     else:
         return label

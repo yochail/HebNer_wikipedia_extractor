@@ -19,7 +19,11 @@ class WikiMapperExtention(WikiMapper):
 		with sqlite3.connect(self._path_to_db) as conn:
 			c = conn.cursor()
 			c.execute(
-				"SELECT DISTINCT wikidata_id FROM mapping"
+				"""SELECT DISTINCT wikidata_id FROM mapping
+				 WHERE wikidata_id NOT IN (
+				 SELECT DISTINCT wikidata_id from wiki_data WHERE entity_type != ""
+				 )
+				"""
 			)
 			results = c.fetchall()
 
@@ -30,11 +34,13 @@ class WikiMapperExtention(WikiMapper):
 		with sqlite3.connect(self._path_to_db) as conn:
 			conn.execute(
 				"""CREATE TABLE wiki_data (
-				wikidata_id text PRIMARY KEY ,
-				wikipedia_title text,
-				synonyms text,
-				entity_type text,
-				categories text
+				    wikidata_id     TEXT PRIMARY KEY,
+				    wikipedia_title TEXT,
+				    synonyms_title        TEXT,
+				    synonyms_data        TEXT,
+				    entity_type     TEXT,
+				    categories      TEXT,
+				    page_text       TEXT
 				)"""
 			)
 
@@ -43,14 +49,18 @@ class WikiMapperExtention(WikiMapper):
                         wikidata_id,
                         wikipedia_title,
                         entity_type,
-                        synonyms,
-                        categories
+                        synonyms_title,
+                        synonyms_data,
+                        categories,
+                        page_text
                     )
                     SELECT wikidata_id,
                     wikipedia_title,
                     "",
+                    group_concat(REPLACE(wikipedia_title,'_',' '),';') as synonyms_title,
                     "",
-                    group_concat(REPLACE(wikipedia_title,'_',' '),';') as synonyms
+                    "",
+                    ""
                     FROM mapping 
 					GROUP BY 
                     wikidata_id 
@@ -60,7 +70,6 @@ class WikiMapperExtention(WikiMapper):
 
 
 	def extand_entities_with_wiki_data(self, wiki_data):
-		self.create_data_tabel()
 		quaryData = []
 		for item in wiki_data:
 			wikidata_id = item['item']['value'].replace("http://www.wikidata.org/entity/","")
@@ -69,13 +78,13 @@ class WikiMapperExtention(WikiMapper):
 			c = conn.cursor()
 			quary = f"""
 			UPDATE wiki_data
-			SET synonyms = synonyms || ; || '?',
-			 entity_type = '?'
-			WHERE wikidata_id = '?'
+			SET synonyms_data = ?,
+			 entity_type = ?
+			WHERE wikidata_id = ?
 			"""
 			print(quary)
 			res = c.executemany(quary,quaryData)
-			print(res.rowcount + "rows updated")
+			print(str(res.rowcount) + "rows updated")
 			return c
 
 	def get_entity_data(self, wikidata_id):
@@ -88,6 +97,17 @@ class WikiMapperExtention(WikiMapper):
 			return result
 		else:
 			return None
+
+	def stor_item_data(self, page_wiki_id, page_categories, lines):
+		with sqlite3.connect(self._path_to_db) as conn:
+			c = conn.cursor()
+			c.execute("""
+			UPDATE wiki_data
+			SET categories = ?,
+			page_text = ?
+			WHERE wikidata_id = ?
+			""",(page_categories,'\n'.join(lines),page_wiki_id))
+
 
 
 

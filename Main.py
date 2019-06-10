@@ -14,7 +14,7 @@ docStartLine = re.compile(r'<doc id=\"\d+\" '
                           + 'url=\"https?://he\.wikipedia\.org/wiki\?curid=\d+\" ' +
                           'title=\"(.+)\" categories=\"\[(.*)\]\">')
 docEndLine = re.compile(r'</doc>')
-labeledLine = re.compile(r'<(.+)>(.+)')
+labeledLine = re.compile(r'(.+)<(.+)>')
 
 pathlist = Path("./Output").glob('**\wiki_*')
 
@@ -44,8 +44,10 @@ def getNERLabel(labels, is_first, is_end):
 		label = "GPE"
 	elif ("FAC" in labels):
 		label = "FAC"
+	elif ("ORG" in labels):
+		label = "ORG"
 	else:
-		print("cant resolve from:" + labels)
+		print("cant resolve from:" + str(labels))
 		label = labels[0]
 	return prefix+label
 
@@ -53,18 +55,22 @@ def getNERLabel(labels, is_first, is_end):
 
 def handel_labeled_line(line, text, label, doc_title, doc_categories,is_first,is_end):
 	wiki_id = mapperExt.title_to_id(label)
-	print(label)
-	entityData = mapperExt.get_entity_data(wiki_id)
-	labels = [l for l in entityData[3].split(';') if l not in ['']]
-	if(len(labels) > 0):
-		label = getNERLabel(labels,is_first,is_end)
-		line = f"\u202a{text};\u202a{label};{str(wiki_id)};{str(label)}\n"
-		return line
+	if(wiki_id):
+		entityData = mapperExt.get_entity_data(wiki_id)
+		labels = [l for l in entityData[4].split(';') if l not in ['']]
+		if(len(labels) > 0):
+			#print(label)
+			NERlabel = getNERLabel(labels,is_first,is_end)
+			line = f"{text};{label};{str(wiki_id)};{NERlabel}\n"
+			return line
+		else:
+			return handel_unlabeled_line(line)
 	else:
 		return handel_unlabeled_line(line)
 
 def handel_unlabeled_line(line):
-	line = f"\u202a{line[:-1]};;;{EMPTY_LABEL}\n"
+	line = f"{line[:-1]};;;{EMPTY_LABEL}\n"
+	return line
 
 def categorise():
 	'''read all files one by one, and edit the labeled line by
@@ -77,6 +83,10 @@ def categorise():
 			is_first = True
 			is_last = True
 			lines = f.readlines()
+
+			page_title = ""
+			page_categories = ""
+			page_wiki_id = ""
 			for i in range(len(lines)):
 				line = lines[i]
 				if(i<len(lines)-1):
@@ -85,31 +95,30 @@ def categorise():
 					next_line = None
 
 				docStart = docStartLine.match(line)
-				page_title = ""
-				page_categories = ""
 				if (docStart):
 					statistcs["pages"] += 1
 					page_title = docStart.group(1)
-					page_categories = docStart.group(1)
+					page_categories = docStart.group(2)
+					page_wiki_id  = mapperExt.title_to_id(page_title)
 				elif docEndLine.match(line):
-					# ignor line
-					pass
+					mapperExt.stor_item_data(page_wiki_id,page_categories,newData)
+					newData = []
 				else:
 					statistcs["words"] += 1
 					label = labeledLine.match(line)
 					if (label):
 						statistcs["labeled"] += 1
-						label_next = labeledLine.match(line)
+						label_next = labeledLine.match(next_line)
 
 						if (label_next):
-							if (label.group(1) == label_next.group(1)):
+							if (label.group(2) == label_next.group(2)):
 								is_last = False
 							else:
 								is_last = True
 
 						line = handel_labeled_line(line,
-						                           label.group(2),
 						                           label.group(1),
+						                           label.group(2),
 						                           page_title,
 						                           page_categories,
 						                           is_first,is_last)
@@ -122,17 +131,18 @@ def categorise():
 						is_last = True
 
 				newData.append(line)
-			io.open(path, 'w', encoding='utf-8').writelines(newData)
+			#io.open(path, 'w', encoding='utf-8').writelines(newData)
 			break
 
 	# wikidata_id = mapper.title_to_id("מתמטיקה"
 
 
 def create_wikidata_mapper():
-	allLabels = mapperExt.get_all_entities()[300]
+	allLabels = mapperExt.get_all_entities()
 	wiki_data = SPARQL.SPARQL().get_wikidata_labels([l for l in allLabels if l is not None])
+	#mapperExt.create_data_tabel()
 	return mapperExt.extand_entities_with_wiki_data(wiki_data)
 
-
+#create_wikidata_mapper()
 categorise()
-# create_wikidata_mapper()
+

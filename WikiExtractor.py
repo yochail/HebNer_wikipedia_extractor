@@ -69,7 +69,7 @@ import os.path
 import re  # TODO use regex when it will be standard
 import time
 import json
-from heb_ner import text2BIOES_format
+from heb_ner import format_punctuation
 from io import StringIO
 from multiprocessing import Queue, Process, Value, cpu_count
 from timeit import default_timer
@@ -595,7 +595,7 @@ class Extractor(object):
                 if out == sys.stdout:   # option -a or -o -
                     line = line.encode('utf-8')
                 out.write(line)
-                out.write('\n')
+                #out.write('\n')
             out.write(footer)
 
     def extract(self, out):
@@ -652,7 +652,7 @@ class Extractor(object):
         text = self.clean(text)
         #text = text2BIOES_format(text)
         text = compact(text)
-        text = [text2BIOES_format(t) for t in text]
+        text = [format_punctuation(t) for t in text]
         # from zwChan
         #text = [title_str] + text
 
@@ -2650,8 +2650,9 @@ def compact(text):
                     headers.clear()
                     # use item count for #-lines
                     listCount[i - 1] += 1
-                    bullet = 'BULLET::::%d. ' % listCount[i - 1] if n == '#' else 'BULLET::::- '
-                    page.append('{0:{1}s}'.format(bullet, len(listLevel)) + line)
+                    #bullet = 'BULLET::::%d. ' % listCount[i - 1] if n == '#' else 'BULLET::::- '
+                    #page.append('{0:{1}s}'.format(bullet, len(listLevel)) + line)
+                    page.append(line) #write bullets as regular text
                 elif options.toHTML:
                     if n not in listItem: 
                         n = '*'

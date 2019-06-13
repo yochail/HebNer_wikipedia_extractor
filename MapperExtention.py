@@ -98,15 +98,35 @@ class WikiMapperExtention(WikiMapper):
 		else:
 			return None
 
-	def stor_item_data(self, page_wiki_id, page_categories, lines):
+	def get_entities_data_by_titles(self,titles):
+		quary =  ','.join(['?']*len(titles))
+
 		with sqlite3.connect(self._path_to_db) as conn:
 			c = conn.cursor()
-			c.execute("""
+			c.execute(f"""
+			SELECT categories,entity_type,synonyms_data,synonyms_title
+			 FROM wiki_data 
+			 INNER JOIN
+				(SELECT wikipedia_title,wikidata_id
+			    FROM mapping 
+			    WHERE wikipedia_title in ({quary})) AS RES
+			ON wiki_data.wikidata_id = RES.wikidata_id
+			""", titles)
+			result = c.fetchall()
+		if result is not None and result[0] is not None:
+			return result
+		else:
+			return []
+
+	def stor_items_data(self, itemsData):
+		with sqlite3.connect(self._path_to_db) as conn:
+			c = conn.cursor()
+			c.executemany("""
 			UPDATE wiki_data
 			SET categories = ?,
 			page_text = ?
 			WHERE wikidata_id = ?
-			""",(page_categories,'\n'.join(lines),page_wiki_id))
+			""",itemsData)
 
 
 

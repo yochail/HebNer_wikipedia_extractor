@@ -22,15 +22,14 @@ options["BIOES"] = True
 def categorise():
 	'''read all files one by one, and edit the labeled line by
 	the chosen strategy'''
+	hn = heb_ner.heb_ner(mapperExt,options)
 	statistcs = {"words": 0, "labeled": 0, "pages": 0, "I-ORG": 0, "I-PER": 0, "I-LOC": 0, "I-MISC": 0}
 	for path in pathlist:
 		print(path)
 		with io.open(path, 'r', encoding='utf-8') as f:
-			fileData = heb_ner.handel_wiki_file(f)
-			mapperExt.stor_items_data(fileData)
-
-	# wikidata_id = mapper.title_to_id("מתמטיקה"
-
+			fileData = hn.label_wiki_file(f)
+		mapperExt.stor_items_data(fileData)
+		break
 
 def create_wikidata_mapper():
 	allLabels = mapperExt.get_all_entities()

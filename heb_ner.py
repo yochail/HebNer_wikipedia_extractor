@@ -1,4 +1,6 @@
 import re
+from argparse import ArgumentError
+from logging import exception
 
 options = []
 docStartLine = re.compile(r'<doc id=\"\d+\" '
@@ -13,11 +15,11 @@ labeledLine = re.compile(r'(.+)<(.+)>')
 
 
 class heb_ner:
-	def __init__(self,mapperExt,options):
+	def __init__(self,mapperExt = None,options = {}):
 		self.BEGIN_PRE = "B-"
 		self.INSIDE_PRE = "I-"
-		self.SINGLE_PRE = "S-" if options["BIOES"] else self.BEGIN_PRE
-		self.END_PRE = "E-" if options["BIOES"] else self.INSIDE_PRE
+		self.SINGLE_PRE = "S-" if options.get("BIOES") else self.BEGIN_PRE
+		self.END_PRE = "E-" if options.get("BIOES") else self.INSIDE_PRE
 		self.EMPTY_LABEL = "O"
 		self.mapperExt = mapperExt
 
@@ -26,7 +28,7 @@ class heb_ner:
 			#text = re.sub("<(.+?)>\[(.+?)\]", r"xx", text, re.DOTALL)
 			#print(text)
 			text = re.sub("([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~]+)([\n\s\r]|$)+",r" \1 ",text) #punctuation in new line
-			text = re.sub("([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~])([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~\-])",r"\1 \2",text) #sepereate close punctuation e.g ". in "bla".
+			text = re.sub("([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~])([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~])",r"\1 \2",text) #sepereate close punctuation e.g "'.' in "bla".
 			text = re.sub("([\n\s\r]|$)+([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~]+)",r" \2 ",text) #punctuation in new line
 			text = re.sub("([\n\s\r]|$)+([ולבמהש])(\")([\u0590-\u05fe]{2,})",r" \2 \3 \4",text) #handle citation in the middle of word
 			text = re.sub("([\s\n]+)|(^$)", "\n", text) #replace spaces with newlines
@@ -59,8 +61,8 @@ class heb_ner:
 				page_title = docStart.group(1)
 				page_categories = docStart.group(2)
 			elif docEndLine.match(line):
-				labeledLines = self.handleLines(newData)
-				file_data.append((page_categories, '\n'.join(newData),page_wiki_id))
+				labeledLines,page_wiki_id = self.handleLines(newData,page_title)
+				file_data.append((page_categories, '\n'.join(labeledLines),page_wiki_id))
 				newData = []
 			else:
 				label = labeledLine.match(line)
@@ -114,27 +116,40 @@ class heb_ner:
 			label = labels[0]
 		return prefix + label
 
-	def handleLines(self, lines):
-		titles = [l[1][3] for l in lines if l[0] == "labeled"]
+	def handleLines(self, lines,title):
+		title = title.replace(' ','_')
+		titles = [l[1][2] for l in lines if l[0] == "labeled"]
+		titles.append(title)
 		wiki_data = self.mapperExt.get_entities_data_by_titles(titles)
+		page_wiki_id = [l for l in wiki_data if l[1] == title]
+		if not page_wiki_id:
+			raise Exception(title)
+		else:
+			page_wiki_id = page_wiki_id[0][0]
 		labeledLines = []
 		for line in lines:
 			if(line[0] == "unlabeled"):
 				new_line = self.handel_unlabeled_line(line[1])
 			else:
-				self.handel_labeled_line(line[1],wiki_data)
+				new_line = self.handel_labeled_line(line[1],wiki_data)
 			labeledLines.append(new_line)
-		return labeledLines
+		return labeledLines,page_wiki_id
 
-	def handel_labeled_line(self,line_data, wiki_id,wiki_data):
+	def handel_labeled_line(self,line_data,wiki_data):
 		(line, text, label,
 		 doc_title, doc_categories,
 		 is_first, is_end) = line_data
-		wiki_id = wiki_data[doc_title][0]
-		entity_labels = wiki_data[doc_title][1]
+		wiki_data_line = [l for l in wiki_data if l[1] ==label]
+		wiki_id = None
+		if not wiki_data_line:
+			print('missing page:' + label)
+		else:
+			wiki_data_line = wiki_data_line[0]
+			wiki_id = wiki_data_line[0]
+			entity_labels = wiki_data_line[4]
 		if (wiki_id):
 			labels = [l for l in entity_labels.split(';') if l not in ['']]
-			if (len(labels) > 0):
+			if (labels):
 				# print(label)
 				NERlabel = self.getNERLabel(labels, is_first, is_end)
 				line = f"{text};{label};{wiki_id};{NERlabel}"

@@ -99,24 +99,27 @@ class WikiMapperExtention(WikiMapper):
 			return None
 
 	def get_entities_data_by_titles(self,titles):
-		quary =  ','.join(['?']*len(titles))
-
-		with sqlite3.connect(self._path_to_db) as conn:
-			c = conn.cursor()
-			c.execute(f"""
-			SELECT categories,entity_type,synonyms_data,synonyms_title
-			 FROM wiki_data 
-			 INNER JOIN
-				(SELECT wikipedia_title,wikidata_id
-			    FROM mapping 
-			    WHERE wikipedia_title in ({quary})) AS RES
-			ON wiki_data.wikidata_id = RES.wikidata_id
-			""", titles)
-			result = c.fetchall()
-		if result is not None and result[0] is not None:
-			return result
-		else:
-			return []
+		result = []
+		SQL_MAX_QUAERY = 999
+		for i in range(0,len(titles),SQL_MAX_QUAERY):
+			group = titles[i:i+SQL_MAX_QUAERY]
+			query = ','.join(['?'] * len(group))
+			with sqlite3.connect(self._path_to_db) as conn:
+				c = conn.cursor()
+				conn.set_trace_callback(print)
+				c.execute(f"""
+				SELECT wikidata_id,title,categories,entity_type,synonyms_data,synonyms_title
+				 FROM wiki_data 
+				 INNER JOIN
+					(SELECT wikipedia_title AS title,wikidata_id AS wiki_id
+				    FROM mapping 
+				    WHERE wikipedia_title in ({query})) AS RES
+				ON wiki_data.wikidata_id = RES.wiki_id
+				""", group)
+				groupResult = c.fetchall()
+			if groupResult and groupResult[0] is not None:
+				result.extend(groupResult)
+		return result
 
 	def stor_items_data(self, itemsData):
 		with sqlite3.connect(self._path_to_db) as conn:

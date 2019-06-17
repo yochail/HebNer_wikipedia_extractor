@@ -69,11 +69,13 @@ import os.path
 import re  # TODO use regex when it will be standard
 import time
 import json
-from heb_ner import format_punctuation
 from io import StringIO
 from multiprocessing import Queue, Process, Value, cpu_count
 from timeit import default_timer
 
+from pandas.io import html
+
+from heb_ner import heb_ner
 
 PY2 = sys.version_info[0] == 2
 # Python 2.7 compatibiity
@@ -214,7 +216,7 @@ templateKeys = set(['10', '828'])
 ##
 # Regex for identifying disambig pages
 filter_disambig_page_pattern = re.compile("{{disambig(uation)?(\|[^}]*)?}}|__DISAMBIG__")
-
+heb_ner = heb_ner()
 ##
 g_page_total = 0
 g_page_articl_total=0
@@ -584,9 +586,9 @@ class Extractor(object):
             out.write('\n')
         else:
             if options.print_revision:
-                header = '<doc id="%s" revid="%s" url="%s" title="%s" categories="[%s]">\n' % (self.id, self.revid, url, self.title,', '.join(self.catSet))
+                header = '<doc id="%s" revid="%s" url="%s" title="%s" categories="[%s]">\n' % (self.id, self.revid, url, html.unescape(self.title),html.unescape(', '.join(self.catSet)))
             else:
-                header = '<doc id="%s" url="%s" title="%s" categories="[%s]">\n' % (self.id, url, self.title,', '.join(self.catSet))
+                header = '<doc id="%s" url="%s" title="%s" categories="[%s]">\n' % (self.id, url, html.unescape(self.title),html.unescape(', '.join(self.catSet)))
             footer = "\n</doc>\n"
             if out == sys.stdout:   # option -a or -o -
                 header = header.encode('utf-8')
@@ -652,7 +654,7 @@ class Extractor(object):
         text = self.clean(text)
         #text = text2BIOES_format(text)
         text = compact(text)
-        text = [format_punctuation(t) for t in text]
+        text = [heb_ner.tokenize_punctuation(t) for t in text]
         # from zwChan
         #text = [title_str] + text
 
@@ -729,14 +731,19 @@ class Extractor(object):
             text = italic_quote.sub(r'"\1"', text)
             text = italic.sub(r'"\1"', text)
             text = quote_quote.sub(r'"\1"', text)
+
         # residuals of unbalanced quotes
         text = text.replace("'''", '').replace("''", '"')
 
-        # residuals of unbalanced quotes
+        # break '-' words, but not labels
         text = text.replace("-", " - ")
 
         # replace internal links
         text = replaceInternalLinks(text)
+
+        # break '-' words, but not labels
+        text = text.replace("_-_", "-")
+
 
         # replace external links
         text = replaceExternalLinks(text)

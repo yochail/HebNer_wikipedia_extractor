@@ -29,7 +29,7 @@ def categorise():
 		with io.open(path, 'r', encoding='utf-8') as f:
 			fileData = hn.label_wiki_file(f)
 		mapperExt.stor_items_data(fileData)
-		break
+
 
 def create_wikidata_mapper():
 	allLabels = mapperExt.get_all_entities()

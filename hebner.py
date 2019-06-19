@@ -1,6 +1,7 @@
 import re
 from argparse import ArgumentError
 from logging import exception
+import html
 
 options = []
 docStartLine = re.compile(r'<doc id=\"\d+\" '
@@ -9,12 +10,7 @@ docStartLine = re.compile(r'<doc id=\"\d+\" '
 docEndLine = re.compile(r'</doc>')
 labeledLine = re.compile(r'(.+)<(.+)>')
 
-
-
-
-
-
-class heb_ner:
+class HebNer:
 	def __init__(self,mapperExt = None,options = {}):
 		self.BEGIN_PRE = "B-"
 		self.INSIDE_PRE = "I-"
@@ -58,8 +54,8 @@ class heb_ner:
 
 			docStart = docStartLine.match(line,)
 			if (docStart):
-				page_title = docStart.group(1)
-				page_categories = docStart.group(2)
+				page_title = html.unescape(docStart.group(1))
+				page_categories = html.unescape(docStart.group(2))
 			elif docEndLine.match(line):
 				labeledLines,page_wiki_id = self.handleLines(newData,page_title)
 				file_data.append((page_categories, '\n'.join(labeledLines),page_wiki_id))
@@ -146,7 +142,7 @@ class heb_ner:
 		else:
 			wiki_data_line = wiki_data_line[0]
 			wiki_id = wiki_data_line[0]
-			entity_labels = wiki_data_line[4]
+			entity_labels = wiki_data_line[3]
 		if (wiki_id):
 			labels = [l for l in entity_labels.split(';') if l not in ['']]
 			if (labels):
@@ -160,7 +156,7 @@ class heb_ner:
 			return self.handel_unlabeled_line(line)
 
 	def handel_unlabeled_line(self,line):
-		line = f"{line[:-1]};;;{self.EMPTY_LABEL}"
+		line = f"{line[1]};;;{self.EMPTY_LABEL}"
 		return line
 
 

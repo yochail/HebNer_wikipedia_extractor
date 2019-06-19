@@ -22,7 +22,7 @@ options["BIOES"] = True
 def categorise():
 	'''read all files one by one, and edit the labeled line by
 	the chosen strategy'''
-	hn = heb_ner.heb_ner(mapperExt,options)
+	hn = heb_ner.HebNer(mapperExt, options)
 	statistcs = {"words": 0, "labeled": 0, "pages": 0, "I-ORG": 0, "I-PER": 0, "I-LOC": 0, "I-MISC": 0}
 	for path in pathlist:
 		print(path)

@@ -106,7 +106,7 @@ class WikiMapperExtention(WikiMapper):
 			query = ','.join(['?'] * len(group))
 			with sqlite3.connect(self._path_to_db) as conn:
 				c = conn.cursor()
-				conn.set_trace_callback(print)
+				#conn.set_trace_callback(print)
 				c.execute(f"""
 				SELECT wikidata_id,title,categories,entity_type,synonyms_data,synonyms_title
 				 FROM wiki_data 

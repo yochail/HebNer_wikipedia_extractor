@@ -83,7 +83,7 @@ class HebNer:
 					is_first = False
 
 				else:
-					line = ("unlabeled",line)
+					line = ("unlabeled",(line,))
 					is_first = True
 					is_last = True
 				newData.append(line)
@@ -127,7 +127,7 @@ class HebNer:
 		labeledLines = []
 		for line in lines:
 			if(line[0] == "unlabeled"):
-				new_line = self.handel_unlabeled_line(line[1].strip('\n'))
+				new_line = self.handel_unlabeled_line(line[1][0].strip('\n'))
 			else:
 				new_line = self.handel_labeled_line(line[1],wiki_data)
 			labeledLines.append(new_line)

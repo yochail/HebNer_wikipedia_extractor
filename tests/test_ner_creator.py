@@ -63,9 +63,9 @@ class TestHebNER(unittest.TestCase):
             ("labeled",("line","שם","שם_של_מקום","","",True,False)),
             ("labeled",("line","של","שם_של_מקום","","",False,False)),
             ("labeled",("line","מקום","שם_של_מקום","","",False,True)),
-            ("unlabeled",("line","יש","","","",False,False)),
+            ("unlabeled",("יש",)),
             ("labeled",("line","ארגון","שם_של_ארגון","","",True,True)),
-            ("unlabeled",("line","בראשות","","","",False,False)),
+            ("unlabeled",("בראשות",)),
             ("labeled",("line","פרטי","שם_של_אדם","","",True,False)),
             ("labeled",("line","-","שם_של_אדם","","",False,False)),
             ("labeled",("line","משפחה","שם_של_אדם","","",False,True)),
@@ -92,7 +92,7 @@ class TestHebNER(unittest.TestCase):
             "משפחה;שם_של_אדם;Q0;E-PER",
             "לא;טיטל_לא_מתוייג(ריק);Q3;O",
             "מתוייג;טיטל_לא_מתוייג(ריק);Q3;O",
-            "i;;;O"
+            "חסר;;;O"
         ],"Q4")
 
 

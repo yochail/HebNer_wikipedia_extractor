@@ -1,10 +1,20 @@
+import io
 import sys
 import unittest
 
-from hebner import HebNer
+from wikipage_ner_creator import HebNer
 
+
+class MocWikidata:
+    def __init__(self,tag_data):
+        self.tag_data = tag_data
+
+    def get_entities_data_by_titles(self,titles):
+        return self.tag_data
 
 class TestHebNER(unittest.TestCase):
+
+
     def test_remove_punctuation(self):
         """
         Test remove exstra punctuations
@@ -85,15 +95,28 @@ class TestHebNER(unittest.TestCase):
             "i;;;O"
         ],"Q4")
 
-        class moc_wikidata:
-            def get_entities_data_by_titles(self):
-                return tag_data\
 
         self.buffer=True #save std output
-        result = HebNer(moc_wikidata,{"BIOES":True}).handleLines(data,"כותרת")
+        result = HebNer(MocWikidata(tag_data),{"BIOES":True}).handleLines(data,"כותרת")
         self.assertEqual(result[1], expected_result[1])
         for line1,line2 in zip(result[0],expected_result[0]):
             self.assertEqual(line1, line2)
+
+    def test_label_wiki_file(self):
+        tag_data = (
+            ("Q0", "הודו", "", "GPE"),
+            ("Q1", "המאה_ה-20", "", "TIM"),
+            ("Q2", "ג'ון_קייג'", "", "PER"),
+        )
+        with io.open("test_data/test_wiki_doc", 'r', encoding='utf-8') as f:
+            file_data = HebNer(MocWikidata(tag_data),{"BIOES":True}).label_wiki_file(f)
+        with io.open("test_data/test_data_res", 'r', encoding='utf-8') as erf:
+            self.assertEqual(file_data[0][0], "מוזיקה, בידור, אמנות, אמנות הבמה")
+            self.assertEqual(file_data[0][2], "מוזיקה")
+            for line1,line2 in zip(erf.readlines(),file_data[0][1].split('\n')):
+                self.assertEqual(line1.strip('\n'), line2)
+
+
 
 if __name__ == '__main__':
     unittest.main()

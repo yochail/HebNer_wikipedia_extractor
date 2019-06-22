@@ -127,7 +127,7 @@ class HebNer:
 		labeledLines = []
 		for line in lines:
 			if(line[0] == "unlabeled"):
-				new_line = self.handel_unlabeled_line(line[1])
+				new_line = self.handel_unlabeled_line(line[1].strip('\n'))
 			else:
 				new_line = self.handel_labeled_line(line[1],wiki_data)
 			labeledLines.append(new_line)
@@ -155,7 +155,7 @@ class HebNer:
 				line = f"{text};{label};{wiki_id};{self.EMPTY_LABEL}"
 			return line
 		else:
-			return self.handel_unlabeled_line(line)
+			return self.handel_unlabeled_line(text)
 
 	def handel_unlabeled_line(self,line):
 		line = f"{line};;;{self.EMPTY_LABEL}"

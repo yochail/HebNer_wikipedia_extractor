@@ -736,7 +736,7 @@ class Extractor(object):
         text = text.replace("'''", '').replace("''", '"')
 
         # break '-' words, but not labels
-        text = text.replace("-", " - ")
+        text = HebNer().replace_hypen(text)
 
         # replace internal links
         text = replaceInternalLinks(text)

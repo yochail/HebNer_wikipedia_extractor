@@ -6,10 +6,10 @@ class SPARQL:
 		self.url = 'https://query.wikidata.org/sparql'
 
 	def get_wikidata_labels(self,wikidata_ids):
-		data_list = []
 		step = 400
 		ids_groups = [wikidata_ids[i:i+step] for i in range(0,len(wikidata_ids),step)]
 		for group in ids_groups:
+			data_list = []
 			ids = " wd:" + " wd:".join(group)
 			query = """
 			SELECT ?item ?itemLabel (GROUP_CONCAT(DISTINCT ?itemSyno; SEPARATOR=";") AS ?itemSynos) (GROUP_CONCAT(DISTINCT ?type; SEPARATOR=";") AS ?types) WHERE {
@@ -35,7 +35,7 @@ class SPARQL:
 			print(r)
 			data = r.json()
 			data_list.extend(data["results"]["bindings"])
-		return data_list
+			yield data_list
 
 
 

@@ -9,56 +9,59 @@ class TestHebNER(unittest.TestCase):
         """
         Test remove exstra punctuations
         """
-        data = """
-        'דג, אחד בשם ג'מיל, היה-בים. פתאום(לפתע) הוא טבע: כמה "נוראי ואיום". יש להגיש בג"ץ בנושא!'
-        """
-        result = hebner.HebNer.tokenize_punctuation(data)
-        expected_result = """
-		דג
-		,
-		אחד
-		בשם
-		ג'מיל
-		,
-		היה
-		-
-		בים
-		.
-		פתאום
-		(
-		לפתע
-		)
-		הוא
-		טבע
-		:
-		כמה
-		"
-		נוראי
-		ואיום
-		"
-		.
-		יש
-		להגיש
-		בג"ץ
-		בנושא
-		!
-		"""
-        self.assertEqual(result, expected_result)
+        hebner = HebNer();
+        data = """'דג, אחד בשם ג'מיל, היה-בים. פתאום (לפתע) הוא טבע:
+         כמה "נוראי ואיום". יש להגיש בג"ץ בנושא!'"""
+        result = hebner.replace_hypen(data)
+        result = hebner.tokenize_punctuation(result)
+        expected_result = """'
+דג
+,
+אחד
+בשם
+ג'מיל
+,
+היה
+-
+בים
+.
+פתאום
+(
+לפתע
+)
+הוא
+טבע
+:
+כמה
+"
+נוראי
+ואיום
+"
+.
+יש
+להגיש
+בג"ץ
+בנושא
+!
+'"""
+        for line1, line2 in zip(result.split('\n'), expected_result.split('\n')):
+            self.assertEqual(line1, line2)
 
-    def test_remove_punctuation(self):
+
+    def test_label_lines(self):
         data = (
-            ("labeled",("line","שם","שם_של_מקום","","","","")),
-            ("labeled",("line","של","שם_של_מקום","","","","")),
-            ("labeled",("line","מקום","שם_של_מקום","","","","")),
-            ("unlabeled",("line","יש","","","","","")),
-            ("labeled",("line","ארגון","שם_של_ארגון","","","","")),
-            ("unlabeled",("line","בראשות","","","","","")),
-            ("labeled",("line","פרטי","שם_של_אדם","","","","")),
-            ("labeled",("line","-","שם_של_אדם","","","","")),
-            ("labeled",("line","משפחה","שם_של_אדם","","","","")),
-            ("labeled",("line","לא","טיטל_לא_מתוייג(ריק)","","","","")),
-            ("labeled",("line","מתוייג","טיטל_לא_מתוייג(ריק)","","","","")),
-            ("labeled",("line","חסר","טיטל_חסר","","","","")),
+            ("labeled",("line","שם","שם_של_מקום","","",True,False)),
+            ("labeled",("line","של","שם_של_מקום","","",False,False)),
+            ("labeled",("line","מקום","שם_של_מקום","","",False,True)),
+            ("unlabeled",("line","יש","","","",False,False)),
+            ("labeled",("line","ארגון","שם_של_ארגון","","",True,True)),
+            ("unlabeled",("line","בראשות","","","",False,False)),
+            ("labeled",("line","פרטי","שם_של_אדם","","",True,False)),
+            ("labeled",("line","-","שם_של_אדם","","",False,False)),
+            ("labeled",("line","משפחה","שם_של_אדם","","",False,True)),
+            ("labeled",("line","לא","טיטל_לא_מתוייג(ריק)","","",True,False)),
+            ("labeled",("line","מתוייג","טיטל_לא_מתוייג(ריק)","","",False,True)),
+            ("labeled",("line","חסר","טיטל_חסר","","",True,True)),
         )
         tag_data = (
             ("Q0","שם_של_אדם","","PER"),
@@ -68,8 +71,8 @@ class TestHebNER(unittest.TestCase):
             ("Q4","כותרת","",""),
         )
         expected_result = ([
-            "שם;שם_של_מקום;Q1;B-LOC"
-            ";של;שם_של_מקום;Q1;I-LOC",
+            "שם;שם_של_מקום;Q1;B-LOC",
+            "של;שם_של_מקום;Q1;I-LOC",
             "מקום;שם_של_מקום;Q1;E-LOC",
             "יש;;;O",
             "ארגון;שם_של_ארגון;Q2;S-ORG",
@@ -87,8 +90,10 @@ class TestHebNER(unittest.TestCase):
                 return tag_data\
 
         self.buffer=True #save std output
-        result = HebNer(moc_wikidata).handleLines(data,"כותרת")
-        self.assertEqual(result, expected_result)
+        result = HebNer(moc_wikidata,{"BIOES":True}).handleLines(data,"כותרת")
+        self.assertEqual(result[1], expected_result[1])
+        for line1,line2 in zip(result[0],expected_result[0]):
+            self.assertEqual(line1, line2)
 
 if __name__ == '__main__':
     unittest.main()

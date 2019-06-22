@@ -23,15 +23,17 @@ class HebNer:
 	def tokenize_punctuation(self,text:str)->str:
 			#text = re.sub("<(.+?)>\[(.+?)\]", r"xx", text, re.DOTALL)
 			#print(text)
-			text = re.sub("([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~]+)([\n\s\r]|$)+",r" \1 ",text) #punctuation in new line
+			text = re.sub("([\,\.\!\:\?\;\\\/\\\(\)\[\]\"\'\`\~]+)([\n\s\r]|$)+",r" \1 ",text) #punctuation in new line
 			text = re.sub("([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~])([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~])",r"\1 \2",text) #sepereate close punctuation e.g "'.' in "bla".
-			text = re.sub("([\n\s\r]|$)+([\,\.\!\:\?\;\\/\\\(\)\[\]\"\'\`\~]+)",r" \2 ",text) #punctuation in new line
+			text = re.sub("([\n\s\r]|$|^)+([\,\.\!\:\?\;\\\/\\\(\)\[\]\"'\`\~]+)",r" \2 ",text) #punctuation in new line
 			text = re.sub("([\n\s\r]|$)+([ולבמהש])(\")([\u0590-\u05fe]{2,})",r" \2 \3 \4",text) #handle citation in the middle of word
 			text = re.sub("([\s\n]+)|(^$)", "\n", text) #replace spaces with newlines
 			text = re.sub("^\n", "", text) #get rid of double spaces
 		#	text = re.sub("\n$", "", text) #replace spaces with newlines
 			return text
 
+	def replace_hypen(self,text):
+		return text.replace("-", " - ")
 	#def handlePunc(match):
 	#	return ("\n" + match.group(0) + "\n").replace(" ","")
 
@@ -91,14 +93,14 @@ class HebNer:
 	def getNERLabel(self,labels, is_first, is_end):
 		prefix = ""
 		label = ""
-		if (is_first, is_end):
+		if (is_first and is_end):
 			prefix = self.SINGLE_PRE
 		elif (is_first):
-			prefix = BEGIN_PRE
+			prefix = self.BEGIN_PRE
 		elif (is_end):
-			prefix = END_PRE
+			prefix = self.END_PRE
 		else:
-			prefix = INSIDE_PRE
+			prefix = self.INSIDE_PRE
 		if (len(labels) == 1):
 			label = labels[0]
 		elif ("GPE" in labels):
@@ -119,7 +121,7 @@ class HebNer:
 		wiki_data = self.mapperExt.get_entities_data_by_titles(titles)
 		page_wiki_id = [l for l in wiki_data if l[1] == title]
 		if not page_wiki_id:
-			raise Exception(title)
+			page_wiki_id = title #filler for pages without id
 		else:
 			page_wiki_id = page_wiki_id[0][0]
 		labeledLines = []
@@ -156,7 +158,7 @@ class HebNer:
 			return self.handel_unlabeled_line(line)
 
 	def handel_unlabeled_line(self,line):
-		line = f"{line[1]};;;{self.EMPTY_LABEL}"
+		line = f"{line};;;{self.EMPTY_LABEL}"
 		return line
 
 

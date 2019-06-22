@@ -32,19 +32,13 @@ class WikiMapperExtention(WikiMapper):
 
 	def create_data_tabel(self):
 		with sqlite3.connect(self._path_to_db) as conn:
-			conn.execute(
-				"""CREATE TABLE wiki_data (
-				    wikidata_id     TEXT PRIMARY KEY,
-				    wikipedia_title TEXT,
-				    synonyms_title        TEXT,
-				    synonyms_data        TEXT,
-				    entity_type     TEXT,
-				    categories      TEXT,
-				    page_text       TEXT
-				)"""
-			)
+			self.create_wikidata_table(conn)
+			self.fill_page_without_id(conn)
+			self.insert_all_pages_to_table(conn)
+		return conn.cursor()
 
-			conn.execute("""
+	def insert_all_pages_to_table(self, conn):
+		conn.execute("""
 			INSERT INTO wiki_data (
                         wikidata_id,
                         wikipedia_title,
@@ -66,8 +60,28 @@ class WikiMapperExtention(WikiMapper):
                     wikidata_id 
                       """)
 
-		return conn.cursor()
+	def fill_page_without_id(self, conn):
+		conn.execute("""
+			update
+			mapping
+			Set
+			wikidata_id = wikipedia_titl
+			WHERE
+			wikidata_id is null
+			""")
 
+	def create_wikidata_table(self, conn):
+		conn.execute(
+			"""CREATE TABLE wiki_data (
+				wikidata_id     TEXT PRIMARY KEY,
+				wikipedia_title TEXT,
+				synonyms_title        TEXT,
+				synonyms_data        TEXT,
+				entity_type     TEXT,
+				categories      TEXT,
+				page_text       TEXT
+			)"""
+		)
 
 	def extand_entities_with_wiki_data(self, wiki_data):
 		quaryData = []
@@ -122,14 +136,31 @@ class WikiMapperExtention(WikiMapper):
 		return result
 
 	def stor_items_data(self, itemsData):
-		with sqlite3.connect(self._path_to_db) as conn:
-			c = conn.cursor()
-			c.executemany("""
-			UPDATE wiki_data
-			SET categories = ?,
-			page_text = ?
-			WHERE wikidata_id = ?
-			""",itemsData)
+		try:
+			with sqlite3.connect(self._path_to_db) as conn:
+				c = conn.cursor()
+				c.executemany("""
+				UPDATE wiki_data
+				SET categories = ?,
+				page_text = ?
+				WHERE wikidata_id = ?
+				""",itemsData)
+		except:
+			raise
+
+	def insert_missing_ids(self, itemsData):
+		try:
+			with sqlite3.connect(self._path_to_db) as conn:
+				c = conn.cursor()
+				c.executemany("""
+				INSERT OR IGNORE INTO my_table (name, age) VALUES ('Karen', 34)
+				UPDATE wiki_data
+				SET categories = ?,
+				page_text = ?
+				WHERE wikidata_id = ?
+				""",itemsData)
+		except:
+			print(error)
 
 
 

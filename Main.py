@@ -7,7 +7,7 @@ from pathlib import Path
 
 # wikimapper.download_wikidumps('hewiki-latest','./Data',overwrite=False)
 # wikimapper.create_index('hewiki-latest','./Data','./Output/Mapping')
-import heb_ner
+from hebner import HebNer
 
 mapperExt = MapperExtention.WikiMapperExtention("Output/Mapping")
 
@@ -22,7 +22,7 @@ options["BIOES"] = True
 def categorise():
 	'''read all files one by one, and edit the labeled line by
 	the chosen strategy'''
-	hn = heb_ner.HebNer(mapperExt, options)
+	hn = HebNer(mapperExt, options)
 	statistcs = {"words": 0, "labeled": 0, "pages": 0, "I-ORG": 0, "I-PER": 0, "I-LOC": 0, "I-MISC": 0}
 	for path in pathlist:
 		print(path)
@@ -30,12 +30,12 @@ def categorise():
 			fileData = hn.label_wiki_file(f)
 		mapperExt.stor_items_data(fileData)
 
-
 def create_wikidata_mapper():
-	allLabels = mapperExt.get_all_entities()
-	wiki_data = SPARQL.SPARQL().get_wikidata_labels([l for l in allLabels if l is not None])
 	#mapperExt.create_data_tabel()
-	return mapperExt.extand_entities_with_wiki_data(wiki_data)
+	allLabels = mapperExt.get_all_entities()
+	labels = [l for l in allLabels if l is not None]
+	for wiki_data in SPARQL.SPARQL().get_wikidata_labels(labels):
+		mapperExt.extand_entities_with_wiki_data(wiki_data)
 
 #create_wikidata_mapper()
 categorise()

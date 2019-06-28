@@ -11,6 +11,20 @@ class WikiMapperExtention(WikiMapper):
 		self._path_to_db = path_to_db
 		WikiMapper.__init__(self,path_to_db)
 
+	def get_labeled_data(self,top) -> List[str]:
+		''' Returns:
+			List[str]: A list of <top> Labeled Data.
+		'''
+		query = """SELECT * FROM wiki_data"""
+		if(top):
+			query += f" LIMIT {str(top)}"
+		with sqlite3.connect(self._path_to_db) as conn:
+			c = conn.cursor()
+			c.execute(query)
+			results = c.fetchall()
+
+			return [e[0] for e in results]
+
 	def get_all_entities(self) -> List[str]:
 		''' Returns:
 			List[str]: A list of All Wikidata ID in DB.

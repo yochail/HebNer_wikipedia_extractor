@@ -11,7 +11,7 @@ class WikiMapperExtention(WikiMapper):
 		self._path_to_db = path_to_db
 		WikiMapper.__init__(self,path_to_db)
 
-	def get_labeled_data(self,top) -> List[str]:
+	def get_top_wiki_data(self,top) -> List[str]:
 		''' Returns:
 			List[str]: A list of <top> Labeled Data.
 		'''
@@ -23,7 +23,7 @@ class WikiMapperExtention(WikiMapper):
 			c.execute(query)
 			results = c.fetchall()
 
-			return [e[0] for e in results]
+			return results
 
 	def get_all_entities(self) -> List[str]:
 		''' Returns:

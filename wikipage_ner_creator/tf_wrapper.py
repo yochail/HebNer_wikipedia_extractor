@@ -1,6 +1,10 @@
+import re
 from random import random
+
+import nltk as nltk
 from numpy import array
 from numpy import cumsum
+import numpy as np
 from matplotlib import pyplot
 from pandas import DataFrame
 from keras.models import Sequential
@@ -44,49 +48,65 @@ def train_model(model,Xs,ys, n_timesteps):
 	return loss
 
 
+def word_to_vector(text):
+	return np.zeros(500)
+
 
 def getLabeledData(n_sampales, n_timesteps):
-	mapperExt = MapperExtention.WikiMapperExtention("../Data/Mapping")
-	dbData = mapperExt.get_labeled_data(100)
+	mapperExt = MapperExtention.WikiMapperExtention("../Data/Output/Mapping")
+	dbData = mapperExt.get_top_wiki_data(n_sampales)
 	Xs = []
+	Xs_text = []
 	ys = []
 	for page in dbData:
 		page_text = page[6]
-		sentences = page.split(".\n")
-		for sentence in sentences:
+		sentences = re.findall(r'[\s\S]*?\n\.;;;O',page_text)
+		for sentence in filter(lambda s:s,sentences):
 			senX = []
+			senX_t = []
 			seny = []
-			lines = sentence.split('\n')
+			lines = filter(lambda l:l,sentence.split('\n'))
 			count = 0
 			for line in [l.split(';') for l in lines]:
-				if(count<n_timesteps):
+				if(line and count<n_timesteps):
+					print(line)
 					text = line[0]
 					label = line[3]
-					senX.append(text)
+					senX_t.append(text)
+					senX.append(word_to_vector(text))
 					seny.append(label)
+					count += 1
 			#zero padding when needed
-			if(count<n_timesteps):
+			diff = n_timesteps-count
+			if(diff > 0):
+				senX_t.extend([""]*diff)
+				senX.extend([word_to_vector(text)]*diff)
+				seny.extend(["O"]*diff)
+			Xs_text.append(senX_t)
+			Xs.append(senX)
+			ys.append(seny)
 
-
-
+	return Xs_text,Xs,ys
 
 n_timesteps = 20
-n_sampales = 1000
+n_sampales = 40
 results = DataFrame()
 
+if __name__ == "__main__":
 
-Xs,ys,n_vectors_dims = getLabeledData(n_sampales,n_timesteps)
+	Xs_text,Xs,ys = getLabeledData(n_sampales,n_timesteps)
+	n_vectors_dims = len(Xs[0][0])
 
-# lstm forwards
-model = get_lstm_model(n_sampales, n_timesteps, n_vectors_dims)
-results['lstm_forw'] = train_model(model,Xs,ys, n_timesteps)
-# lstm backwards
-model = get_lstm_model(n_timesteps, True)
-results['lstm_back'] = train_model(model, n_timesteps)
-# bidirectional concat
-#model = get_bi_lstm_model(n_timesteps, 'concat')
+	# lstm forwards
+	model = get_lstm_model(n_sampales, n_timesteps, n_vectors_dims)
+	results['lstm_forw'] = train_model(model,Xs,ys, n_timesteps)
+	# lstm backwards
+	model = get_lstm_model(n_timesteps, True)
+	results['lstm_back'] = train_model(model, n_timesteps)
+	# bidirectional concat
+	#model = get_bi_lstm_model(n_timesteps, 'concat')
 
-#results['bilstm_con'] = train_model(model, n_timesteps)
-# line plot of results
-results.plot()
-pyplot.show()
+	#results['bilstm_con'] = train_model(model, n_timesteps)
+	# line plot of results
+	results.plot()
+	pyplot.show()

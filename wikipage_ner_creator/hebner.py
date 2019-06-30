@@ -3,7 +3,9 @@ from argparse import ArgumentError
 from logging import exception
 import html
 
-options = []
+options = {
+"BIOES" : True
+}
 docStartLine = re.compile(r'<doc id=\"\d+\" '
                                + 'url=\"https?://he\.wikipedia\.org/wiki\?curid=\d+\" ' +
                                'title=\"(.+)\" categories=\"\[(.*)\]\">')
@@ -18,6 +20,25 @@ class HebNer:
 		self.END_PRE = "E-" if options.get("BIOES") else self.INSIDE_PRE
 		self.EMPTY_LABEL = "O"
 		self.mapperExt = mapperExt
+		self.labels = ["ORG","PER","LOC","TIM"]
+		if options.get("GPE"):
+			self.labels.append("GPE")
+		if options.get("FAC"):
+			self.labels.append("FAC")
+
+	def get_labels_enc(self):
+		PRE_TYPES = [self.BEGIN_PRE,self.INSIDE_PRE]
+		if options.get("BIOES"):
+			PRE_TYPES.append(self.SINGLE_PRE)
+			PRE_TYPES.append(self.END_PRE)
+		labels_enc = {}
+		counter = 0
+		labels_enc[self.EMPTY_LABEL] = counter
+		for pre in PRE_TYPES:
+			for label in self.labels:
+				counter = counter+1
+				labels_enc[pre + label] = counter
+		return labels_enc
 
 
 	def tokenize_punctuation(self,text:str)->str:

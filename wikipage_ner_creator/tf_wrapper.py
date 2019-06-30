@@ -2,6 +2,8 @@ import re
 from random import random
 
 import nltk as nltk
+from keras.utils import to_categorical
+from keras_preprocessing.sequence import pad_sequences
 from numpy import array
 from numpy import cumsum
 import numpy as np
@@ -14,8 +16,13 @@ from keras.layers import TimeDistributed
 from keras.layers import Bidirectional
 
 # create a sequence classification instance
-from wikipage_ner_creator import MapperExtention
+from tensorflow.python.estimator import keras
 
+from wikipage_ner_creator import MapperExtention, HebNer
+
+labels_enc = HebNer(options = {
+"BIOES" : True
+}).get_labels_enc()
 
 def get_sequence(n_timesteps):
 	# create a sequence of random numbers in [0,1]
@@ -39,17 +46,25 @@ def get_lstm_model(sampales, n_timesteps, vectors_dims):
 
 def train_model(model,Xs,ys, n_timesteps):
 	loss = list()
-	for i in range(len(Xs)):
+	Xs = pad_sequences(Xs, maxlen=n_timesteps,
+	                   padding='post', truncating='post',value=0.0)
+	ys = pad_sequences(ys, maxlen=n_timesteps,
+	                   padding='post',dtype="str", truncating='post', value="O")
+	ys = to_categorical(ys)
 		# generate new random sequence
-		X, y = Xs[i],y[i]
-		# fit model for one epoch on this sequence
-		hist = model.fit(X, y, epochs=100, batch_size=10)#, verbose=0)
-		loss.append(hist.history['loss'][0])
+
+	# fit model for one epoch on this sequence
+	hist = model.fit(Xs, ys, epochs=100, batch_size=10)#, verbose=0)
+	loss.append(hist.history['loss'][0])
 	return loss
 
 
 def word_to_vector(text):
-	return np.zeros(500)
+	return np.zeros(500).tolist()
+
+
+def label_to_vector(label):
+	return [labels_enc[label],]
 
 
 def getLabeledData(n_sampales, n_timesteps):
@@ -66,22 +81,22 @@ def getLabeledData(n_sampales, n_timesteps):
 			senX_t = []
 			seny = []
 			lines = filter(lambda l:l,sentence.split('\n'))
-			count = 0
+			#count = 0
 			for line in [l.split(';') for l in lines]:
-				if(line and count<n_timesteps):
+				#if(line and count<n_timesteps):
 					print(line)
 					text = line[0]
 					label = line[3]
 					senX_t.append(text)
 					senX.append(word_to_vector(text))
-					seny.append(label)
-					count += 1
+					seny.append(label_to_vector(label))
+			#		count += 1
 			#zero padding when needed
-			diff = n_timesteps-count
-			if(diff > 0):
-				senX_t.extend([""]*diff)
-				senX.extend([word_to_vector(text)]*diff)
-				seny.extend(["O"]*diff)
+			#diff = n_timesteps-count
+			#if(diff > 0):
+			#	senX_t.extend([""]*diff)
+			#	senX.extend([word_to_vector(text)]*diff)
+			#	seny.extend(["O"]*diff)
 			Xs_text.append(senX_t)
 			Xs.append(senX)
 			ys.append(seny)
@@ -110,3 +125,4 @@ if __name__ == "__main__":
 	# line plot of results
 	results.plot()
 	pyplot.show()
+	print("dssdsd")

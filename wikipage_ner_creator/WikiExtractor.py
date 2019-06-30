@@ -75,7 +75,6 @@ from timeit import default_timer
 
 import html
 
-from heb_ner import HebNer
 
 PY2 = sys.version_info[0] == 2
 # Python 2.7 compatibiity

@@ -1,7 +1,9 @@
+import pickle
 import re
 from random import random
 
 import nltk as nltk
+from gensim.models.fasttext import load_facebook_vectors
 from keras.utils import to_categorical
 from keras_preprocessing.sequence import pad_sequences
 from numpy import array
@@ -18,11 +20,15 @@ from keras.layers import Bidirectional
 # create a sequence classification instance
 from tensorflow.python.estimator import keras
 
+from fasttxt import getModel
 from wikipage_ner_creator import MapperExtention, HebNer
-
-labels_enc = HebNer(options = {
-"BIOES" : True
-}).get_labels_enc()
+test_tf_model = {}
+options = {
+	"BIOES" : True,
+	"GPE":True,
+	"FAC":True
+}
+labels_enc = HebNer(options=options).get_labels_enc()
 
 def get_sequence(n_timesteps):
 	# create a sequence of random numbers in [0,1]
@@ -37,37 +43,47 @@ def get_sequence(n_timesteps):
 	return X, y
 
 
-def get_lstm_model(sampales, n_timesteps, vectors_dims):
+def get_lstm_model(sampales, n_timesteps, vectors_dims,classification_dim):
 	model = Sequential()
 	model.add(LSTM(sampales, input_shape=(n_timesteps, vectors_dims), return_sequences=True, go_backwards=True))
-	model.add(TimeDistributed(Dense(1, activation='softmax')))
+	model.add(TimeDistributed(Dense(classification_dim, activation='softmax')))
 	model.compile(loss='categorical_crossentropy', optimizer='adam')
 	return model
 
-def train_model(model,Xs,ys, n_timesteps):
-	loss = list()
+def preper_data(Xs,ys, n_timesteps):
 	Xs = pad_sequences(Xs, maxlen=n_timesteps,
-	                   padding='post', truncating='post',value=0.0)
+	                   padding='post', truncating='post', value=0.0)
 	ys = pad_sequences(ys, maxlen=n_timesteps,
-	                   padding='post',dtype="str", truncating='post', value="O")
+	                   padding='post', dtype="str", truncating='post', value=0)
 	ys = to_categorical(ys)
-		# generate new random sequence
+	return Xs,ys
+
+def test_model(model,Xs,ys,batch_size=10):
+	loss = list()
 
 	# fit model for one epoch on this sequence
-	hist = model.fit(Xs, ys, epochs=100, batch_size=10)#, verbose=0)
-	loss.append(hist.history['loss'][0])
+	hist = model.test(Xs, ys, batch_size)#, verbose=0)
+	loss.append(hist.history['loss'])
 	return loss
 
+def train_model(model,Xs,ys, epochs=10,batch_size=10):
+	loss = list()
 
-def word_to_vector(text):
-	return np.zeros(500).tolist()
+	# fit model for one epoch on this sequence
+	hist = model.fit(Xs, ys, epochs, batch_size)#, verbose=0)
+	loss.append(hist.history['loss'])
+	return loss
 
+def word_to_vector(we_model,text):
+	data = we_model[text]
+	test_tf_model[text] = data
+	return data
 
 def label_to_vector(label):
 	return [labels_enc[label],]
 
 
-def getLabeledData(n_sampales, n_timesteps):
+def getLabeledData(n_sampales, we_model):
 	mapperExt = MapperExtention.WikiMapperExtention("../Data/Output/Mapping")
 	dbData = mapperExt.get_top_wiki_data(n_sampales)
 	Xs = []
@@ -82,13 +98,14 @@ def getLabeledData(n_sampales, n_timesteps):
 			seny = []
 			lines = filter(lambda l:l,sentence.split('\n'))
 			#count = 0
-			for line in [l.split(';') for l in lines]:
-				#if(line and count<n_timesteps):
+
+			for line in [l.split(';') for l in lines if l]:
+				if(line[3]):
 					print(line)
 					text = line[0]
 					label = line[3]
 					senX_t.append(text)
-					senX.append(word_to_vector(text))
+					senX.append(word_to_vector(we_model,text))
 					seny.append(label_to_vector(label))
 			#		count += 1
 			#zero padding when needed
@@ -104,20 +121,23 @@ def getLabeledData(n_sampales, n_timesteps):
 	return Xs_text,Xs,ys
 
 n_timesteps = 20
-n_sampales = 40
+n_sampales = 20
 results = DataFrame()
 
 if __name__ == "__main__":
+	ft_model = pickle.load(open("test_tf_model","rb"))
+	#ft_model = load_facebook_vectors("../Data/wiki.he.fasttext.model.bin")
+	Xs_text,Xs,ys = getLabeledData(n_sampales,ft_model)
+	Xs, ys = preper_data(Xs,ys,n_timesteps)
 
-	Xs_text,Xs,ys = getLabeledData(n_sampales,n_timesteps)
 	n_vectors_dims = len(Xs[0][0])
-
+	n_classification_dim = len(ys[0][0])
 	# lstm forwards
-	model = get_lstm_model(n_sampales, n_timesteps, n_vectors_dims)
-	results['lstm_forw'] = train_model(model,Xs,ys, n_timesteps)
+	model = get_lstm_model(n_sampales, n_timesteps, n_vectors_dims,n_classification_dim)
+	results['lstm_forw'] = train_model(model,Xs,ys)
 	# lstm backwards
-	model = get_lstm_model(n_timesteps, True)
-	results['lstm_back'] = train_model(model, n_timesteps)
+	#model = get_lstm_model(n_timesteps, True)
+	#results['lstm_back'] = train_model(model, n_timesteps)
 	# bidirectional concat
 	#model = get_bi_lstm_model(n_timesteps, 'concat')
 
@@ -126,3 +146,4 @@ if __name__ == "__main__":
 	results.plot()
 	pyplot.show()
 	print("dssdsd")
+	#pickle.dump(test_tf_model,open("test_tf_model","wb+"))
